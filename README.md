@@ -1,5 +1,4 @@
 # Assignment
-# API Comparator Library
 This project is created to give an example for Publicly available API: http://dummy.restapiexample.com/
 The site has API for CRUD operations for employee record which you are going to write tests against.
 
