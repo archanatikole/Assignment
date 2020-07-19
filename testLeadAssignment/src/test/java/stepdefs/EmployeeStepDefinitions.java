@@ -1,45 +1,45 @@
 package stepdefs;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.equalTo;
-
-import java.io.UnsupportedEncodingException;
-import java.util.List;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
-
-import cucumber.api.java.en.And;
-import cucumber.api.java.en.Given;
-import cucumber.api.java.en.Then;
-import cucumber.api.java.en.When;
-import io.restassured.RestAssured;
-import io.restassured.http.Header;
-import io.restassured.http.Headers;
-import io.restassured.path.json.JsonPath;
-import io.restassured.path.json.exception.JsonPathException;
-import io.restassured.response.Response;
-import io.restassured.response.ValidatableResponse;
-import io.restassured.specification.RequestSpecification;
+import org.apache.poi.EncryptedDocumentException;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.Assert;
 
 import com.relevantcodes.extentreports.ExtentReports;
 import com.relevantcodes.extentreports.ExtentTest;
 import com.relevantcodes.extentreports.LogStatus;
 
+import cucumber.api.java.en.And;
+import cucumber.api.java.en.Given;
+import cucumber.api.java.en.Then;
+import cucumber.api.java.en.When;
+import io.restassured.RestAssured;
+import io.restassured.path.json.JsonPath;
+import io.restassured.path.json.exception.JsonPathException;
+import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
+import io.restassured.specification.RequestSpecification;
+
 public class EmployeeStepDefinitions {
 
 	private Response response;
 	private ValidatableResponse json;
 	private RequestSpecification request;
-	private static String jsonString,jsonData;
+	private static String reaponseJsonString, jsonData, jsonDataPut, jsonDataDelete;
 	String employeeId,employeeStatus;
 	String cookieValue;
-	int statusCode;
-	boolean isEmployeeName,isEmployeeAge,isEmployeeSal;
+	int statusCode,statusCodeGet,statusCodePut,statusCodeDelete;
+	boolean isEmployeeName, isEmployeeAge, isEmployeeSal;
 
 	private String BASE_URL = "http://dummy.restapiexample.com/api/v1";
+	
 
 	//For creating html
 	String path = System.getProperty("user.dir");
@@ -47,6 +47,48 @@ public class EmployeeStepDefinitions {
 
 //For creating each test
 ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Operations in dummy page.");
+public void writeDataInSheet(Object[] post) {
+
+	String excelFilePath = "testResult.xlsx";
+
+	try {
+		//   FileInputStream inputStream = new FileInputStream(new File(excelFilePath));
+		Workbook workbook=new XSSFWorkbook();
+
+
+
+
+		Sheet newSheet = workbook.createSheet("Data");
+
+		// write data
+		int rowCount = 0;
+		for (Object field : post) {
+			Row row = newSheet.createRow(++rowCount);
+
+			int columnCount = 0;
+			
+				Cell cell = row.createCell(++columnCount);
+
+				if (field instanceof String) {
+					cell.setCellValue((String) field);
+				} else if (field instanceof Integer) {
+					cell.setCellValue((Integer) field);
+
+				}
+			
+		}
+				FileOutputStream outputStream = new FileOutputStream(path+"//report//testResult.xlsx");
+				workbook.write(outputStream);
+				workbook.close();
+				outputStream.close();
+			
+			} catch (IOException  ex) {
+				ex.printStackTrace();
+			} catch (EncryptedDocumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} 
+		}
 
 	@Given("Page to add employee accessed")
 	public void accessBaseURL() {
@@ -65,9 +107,9 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 				.post("/create");
 		cookieValue=response.header("Set-Cookie");
 		
-		jsonString = response.asString();
-		System.out.println(jsonString);
-		RestTest.log(LogStatus.PASS, jsonString);
+		reaponseJsonString = response.asString();
+		System.out.println(reaponseJsonString);
+		RestTest.log(LogStatus.PASS, reaponseJsonString);
 	}
 
 	@Then("The employee is added")
@@ -88,7 +130,7 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 	public void verifyResponse(Map<String, String> jsonForm) {
 		for (Map.Entry<String, String> field : jsonForm.entrySet()) {
 			
-			employeeStatus=JsonPath.from(jsonString).getString("status");
+			employeeStatus=JsonPath.from(reaponseJsonString).getString("status");
 				
 			Assert.assertEquals(field.getValue(),employeeStatus);
 			if(field.getValue().equals(employeeStatus)) {
@@ -104,7 +146,7 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 	@And("response includes the following in any order")
 	public void response_contains_in_any_order(Map<String,String> data){
 		
-			Map<String,String> dataValue = JsonPath.from(jsonString).get("data");
+			Map<String,String> dataValue = JsonPath.from(reaponseJsonString).get("data");
 			employeeId = String.valueOf(dataValue.get("id"));
 			
 			 Assert.assertTrue(dataValue.size() > 0);
@@ -151,8 +193,8 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 				.get("/employee/{id}");
 				
 		jsonData = response.asString();
-		
-		
+	
+		//Verify data
 		String newEmployee = JsonPath.from(jsonData).getString("status");
 		if(newEmployee.contains("success")) {
 			RestTest.log(LogStatus.PASS, "Record displayed");
@@ -193,13 +235,13 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 				.pathParam("id", employeeId)
 				.body("{\"name\":\"Archana\",\"salary\":\"1234567\",\"age\":\"23\"}")
 				.put("/update/{id}");
-		jsonData = response.asString();
-		System.out.println(jsonData);
+		jsonDataPut = response.asString();
+		System.out.println(jsonDataPut);
 				
-		String newEmployee = JsonPath.from(jsonData).getString("status");
+		String newEmployee = JsonPath.from(jsonDataPut).getString("status");
 		if(newEmployee.contains("success")) {
 			RestTest.log(LogStatus.PASS, "Record Updated");
-			RestTest.log(LogStatus.PASS, jsonData);
+			RestTest.log(LogStatus.PASS, jsonDataPut);
 		}
 		else {
 			RestTest.log(LogStatus.FAIL, "Record Not Updated");
@@ -236,14 +278,14 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 				.header("Content-Type", "application/json")
 				.pathParam("id", employeeId)
 				.delete("/delete/{id}");
-		jsonData = response.asString();
-		System.out.println(jsonData);
+		jsonDataDelete = response.asString();
+		System.out.println(jsonDataDelete);
 				
-		String newEmployee = JsonPath.from(jsonData).getString("status");
+		String newEmployee = JsonPath.from(jsonDataDelete).getString("status");
 		if(newEmployee.contains("success")) {
 			
 			RestTest.log(LogStatus.PASS, "Record Deleted");
-			RestTest.log(LogStatus.PASS, jsonData);
+			RestTest.log(LogStatus.PASS, jsonDataDelete);
 		}
 		else {
 			RestTest.log(LogStatus.FAIL, "Record Not Deleted");
@@ -253,6 +295,9 @@ ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Oper
 			RestTest.log(LogStatus.FAIL, "Record Not Deleted");
 			
 		}
+	String[] StringData = {"Created Employee",reaponseJsonString,"Employee Details",jsonData,"Updated Employee",jsonDataPut, "Deleted Employee",jsonDataDelete };
+	Object[] completeData = StringData;
+	writeDataInSheet(completeData);
 	}
 	@Then("The employee is deleted")
 	public void employeeDeleted() {
