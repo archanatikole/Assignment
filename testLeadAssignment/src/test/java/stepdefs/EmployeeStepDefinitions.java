@@ -51,14 +51,12 @@ public class EmployeeStepDefinitions {
 //For creating each test
 ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Operations in dummy page.");
 public void writeDataInSheet(Object[] post) {
-
-	String excelFilePath = "testResult.xlsx";
-	String[] headers = new String[] { "Created Employee", "Employee Details", "Updated Employee","Deleted Employee" };
-
+	Workbook workbook;
+	Sheet newSheet;
 	try {
 		//   FileInputStream inputStream = new FileInputStream(new File(excelFilePath));
-		Workbook workbook=new XSSFWorkbook();
-		Sheet newSheet = workbook.createSheet("Data");
+		workbook=new XSSFWorkbook();
+		newSheet = workbook.createSheet("Data");
 
 		
 		// write data
@@ -83,7 +81,7 @@ public void writeDataInSheet(Object[] post) {
             
             }
         }
-				FileOutputStream outputStream = new FileOutputStream(path+"//report//testResult+d.toString().replace(\":\", \"_\").replace(\" \",\"_\")+\".xlsx");
+				FileOutputStream outputStream = new FileOutputStream(path+"//report//testResult"+d.toString().replace(":", "_").replace(" ","_")+".xlsx");
 				workbook.write(outputStream);
 				workbook.close();
 				outputStream.close();
