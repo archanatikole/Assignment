@@ -10,4 +10,4 @@ import cucumber.api.junit.Cucumber;
 		glue = {"stepdefs"},
 		features = {"src/test/features"},
 		monochrome = true)
-public class CucumberTests {}
+public class ExecuteTest {}

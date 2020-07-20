@@ -2,6 +2,8 @@ package stepdefs;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Date;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.apache.poi.EncryptedDocumentException;
@@ -43,41 +45,45 @@ public class EmployeeStepDefinitions {
 
 	//For creating html
 	String path = System.getProperty("user.dir");
-    ExtentReports extent = new ExtentReports(path+"./report/result.html",true);
+	Date d = new Date();
+    ExtentReports extent = new ExtentReports(path+"./report/result"+d.toString().replace(":", "_").replace(" ","_")+".html",true);
 
 //For creating each test
 ExtentTest RestTest = extent.startTest("Rest Assured CRUD Operations","CRUD Operations in dummy page.");
 public void writeDataInSheet(Object[] post) {
 
 	String excelFilePath = "testResult.xlsx";
+	String[] headers = new String[] { "Created Employee", "Employee Details", "Updated Employee","Deleted Employee" };
 
 	try {
 		//   FileInputStream inputStream = new FileInputStream(new File(excelFilePath));
 		Workbook workbook=new XSSFWorkbook();
-
-
-
-
 		Sheet newSheet = workbook.createSheet("Data");
 
+		
 		// write data
-		int rowCount = 0;
-		for (Object field : post) {
-			Row row = newSheet.createRow(++rowCount);
+		Iterator<Row> rowIterator = newSheet.iterator(); 
+        while (rowIterator.hasNext()) { 
+            Row row = rowIterator.next(); 
+            // For each row, iterate through all the columns 
+            Iterator<Cell> cellIterator = row.cellIterator(); 
 
-			int columnCount = 0;
-			
-				Cell cell = row.createCell(++columnCount);
-
-				if (field instanceof String) {
+            while (cellIterator.hasNext()) { 
+            	for (Object field : post) {
+            	Cell cell = cellIterator.next(); 
+                // Check the cell type and format accordingly 
+                if (field instanceof String) {
 					cell.setCellValue((String) field);
 				} else if (field instanceof Integer) {
 					cell.setCellValue((Integer) field);
 
 				}
-			
-		}
-				FileOutputStream outputStream = new FileOutputStream(path+"//report//testResult.xlsx");
+                     
+            } 
+            
+            }
+        }
+				FileOutputStream outputStream = new FileOutputStream(path+"//report//testResult+d.toString().replace(\":\", \"_\").replace(\" \",\"_\")+\".xlsx");
 				workbook.write(outputStream);
 				workbook.close();
 				outputStream.close();
@@ -98,18 +104,51 @@ public void writeDataInSheet(Object[] post) {
 		
 	}
 
-	@When("I add an emplyee to site")
-	public void addEmployee() {
+	@When("I add an emplyee to site (.*) (.*) (.*)")
+	public void addEmployee(String eName, String salary, String age) {
+		String payload = "{\n" + "	\"name\":" + eName + ", \n" + " 	\"salary\":" + salary + ",\n" + "	\"age\":"
+				+ age + "\n" + "}";
+
 		RestAssured.baseURI = BASE_URL;
 		RequestSpecification request = RestAssured.given();
 		request.header("Content-Type", "application/json");
-		response = request.body("{\"name\":\"Archana\",\"salary\":\"1234\",\"age\":\"23\"}")
-				.post("/create");
-		cookieValue=response.header("Set-Cookie");
-		
+		response = request.body(payload).post("/create");
+		cookieValue = response.header("Set-Cookie");
+
 		reaponseJsonString = response.asString();
 		System.out.println(reaponseJsonString);
 		RestTest.log(LogStatus.PASS, reaponseJsonString);
+		
+		Map<String,String> dataValue = JsonPath.from(reaponseJsonString).get("data");
+		employeeId = String.valueOf(dataValue.get("id"));
+		
+		 Assert.assertTrue(dataValue.size() > 0);
+				
+		 isEmployeeName = dataValue.containsValue(eName);
+		 Assert.assertTrue(isEmployeeName);
+		 if(isEmployeeName) {
+				RestTest.log(LogStatus.PASS, "Name matched");
+			}
+			else {
+				RestTest.log(LogStatus.FAIL, "Name NOT matched");
+			}
+		 isEmployeeSal= dataValue.containsValue(salary);
+		 Assert.assertTrue(isEmployeeSal);
+		 if(isEmployeeSal) {
+				RestTest.log(LogStatus.PASS, "Salary matched");
+			}
+			else {
+				RestTest.log(LogStatus.FAIL, "Salary NOT matched");
+			}
+		 isEmployeeAge = dataValue.containsValue(age);
+		 Assert.assertTrue(isEmployeeAge);
+		 if(isEmployeeAge) {
+				RestTest.log(LogStatus.PASS, "Age matched");
+			}
+			else {
+				RestTest.log(LogStatus.FAIL, "Age NOT matched");
+			}
+	
 	}
 
 	@Then("The employee is added")
@@ -143,40 +182,7 @@ public void writeDataInSheet(Object[] post) {
 
 	}
 	
-	@And("response includes the following in any order")
-	public void response_contains_in_any_order(Map<String,String> data){
 		
-			Map<String,String> dataValue = JsonPath.from(reaponseJsonString).get("data");
-			employeeId = String.valueOf(dataValue.get("id"));
-			
-			 Assert.assertTrue(dataValue.size() > 0);
-					
-			 isEmployeeName = dataValue.containsValue("Archana");
-			 Assert.assertTrue(isEmployeeName);
-			 if(isEmployeeName) {
-					RestTest.log(LogStatus.PASS, "Name matched");
-				}
-				else {
-					RestTest.log(LogStatus.FAIL, "Name NOT matched");
-				}
-			 isEmployeeSal= dataValue.containsValue("1234");
-			 Assert.assertTrue(isEmployeeSal);
-			 if(isEmployeeSal) {
-					RestTest.log(LogStatus.PASS, "Salary matched");
-				}
-				else {
-					RestTest.log(LogStatus.FAIL, "Salary NOT matched");
-				}
-			 isEmployeeAge = dataValue.containsValue("23");
-			 Assert.assertTrue(isEmployeeAge);
-			 if(isEmployeeAge) {
-					RestTest.log(LogStatus.PASS, "Age matched");
-				}
-				else {
-					RestTest.log(LogStatus.FAIL, "Age NOT matched");
-				}
-	}
-	
 	@And("I access employee created")
 	public void accessEmployee() {
 	try {
@@ -295,7 +301,7 @@ public void writeDataInSheet(Object[] post) {
 			RestTest.log(LogStatus.FAIL, "Record Not Deleted");
 			
 		}
-	String[] StringData = {"Created Employee",reaponseJsonString,"Employee Details",jsonData,"Updated Employee",jsonDataPut, "Deleted Employee",jsonDataDelete };
+	String[] StringData = { "Created Employee",reaponseJsonString,"Employee Details",jsonData,"Updated Employee",jsonDataPut,"Deleted Employee", jsonDataDelete };
 	Object[] completeData = StringData;
 	writeDataInSheet(completeData);
 	}
